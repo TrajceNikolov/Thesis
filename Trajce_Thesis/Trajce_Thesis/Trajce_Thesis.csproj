@@ -35,9 +35,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Datastructure, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\Datastructure.dll</HintPath>
+    <Reference Include="Datastructure">
+      <HintPath>..\..\..\..\XTMF\Datastructure.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -46,35 +45,22 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Tasha, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\Tasha.dll</HintPath>
+    <Reference Include="Tasha">
+      <HintPath>..\..\..\..\XTMF\Modules\Tasha.dll</HintPath>
     </Reference>
-    <Reference Include="Tasha.Validation, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\Tasha.Validation.dll</HintPath>
+    <Reference Include="TashaInterfaces">
+      <HintPath>..\..\..\..\XTMF\Modules\TashaInterfaces.dll</HintPath>
     </Reference>
-    <Reference Include="TashaInterfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\TashaInterfaces.dll</HintPath>
+    <Reference Include="TMGInterfaces">
+      <HintPath>..\..\..\..\XTMF\Modules\TMGInterfaces.dll</HintPath>
     </Reference>
-    <Reference Include="TMG.Emme, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\TMG.Emme.dll</HintPath>
-    </Reference>
-    <Reference Include="TMGInterfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\TMGInterfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="XTMFInterfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\XTMF\Modules\XTMFInterfaces.dll</HintPath>
+    <Reference Include="XTMFInterfaces">
+      <HintPath>..\..\..\..\XTMF\Modules\XTMFInterfaces.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Factors.cs" />
-    <Compile Include="Class2.cs" />
-    <Compile Include="Class3.cs" />
+    <Compile Include="Start_Soak_Calculations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
