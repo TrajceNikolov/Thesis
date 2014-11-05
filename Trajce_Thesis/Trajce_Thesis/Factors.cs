@@ -81,7 +81,7 @@ namespace Trajce_Thesis
             }            
         }
 
-        public static float get_exhaust_factor(int roadType, int pollutant, int speed, int hour)
+        public static float GetExhaustFactor(int roadType, int pollutant, int speed, int hour)
         {
             return ExhaustFactors[roadType, pollutant, speed, hour];                        
         }
