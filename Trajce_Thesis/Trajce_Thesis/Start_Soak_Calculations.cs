@@ -65,7 +65,7 @@ namespace Trajce_Thesis
                         Time soakDurationStart = previousWindow.TimeSpan.Start;
                         Time soakDurationEnd = previousWindow.TimeSpan.End;
 
-                        SoakCalculations(soakDurationStart, soakDurationEnd, ref soakResults)                                                
+                        SoakCalculations(soakDurationStart, soakDurationEnd, ref soakResults);                                                
                     }
                 }
             }
