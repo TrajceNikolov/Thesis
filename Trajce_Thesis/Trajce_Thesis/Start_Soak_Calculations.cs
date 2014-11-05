@@ -36,30 +36,34 @@ namespace Trajce_Thesis
             float soakResults = 0;
             var allocator = household["ResourceAllocator"] as HouseholdResourceAllocator;
             CalculateIntraTripChainEmissions(household, ref startResults, ref soakResults);                             
-            CalculateInterTripChainEmissions(ref startResults, ref soakResults, allocator);
+            CalculateInterTripChainEmissions(household, ref startResults, ref soakResults, allocator);
         }
 
-        private void CalculateInterTripChainEmissions(ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
+        private void CalculateInterTripChainEmissions(ITashaHousehold household, ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
         {
+            var lastTimeUsed = household.Vehicles.Select( v => Time.StartOfDay ).ToArray();
             // var allocations = allocator.Resolution;       
             for(int window = 1; window < allocator.VehicleAvailability.Count; window++)
             {
                 var previousWindow = allocator.VehicleAvailability[window - 1];
-                var currentWindow = allocator.VehicleAvailability[window];               
+                var currentWindow = allocator.VehicleAvailability[window];
+                int deltaCars = previousWindow.AvailableCars - currentWindow.AvailableCars;
                 // if a car was returned
                 if(previousWindow.AvailableCars < currentWindow.AvailableCars)
                 {
-
+                    deltaCars = -deltaCars;
+                    for(int i = 0; i < deltaCars; i++)
+                    {
+                        lastTimeUsed[currentWindow.AvailableCars - i - 1] = currentWindow.TimeSpan.Start;
+                    }
                 }
                 // If a car was taken out
                 else if(previousWindow.AvailableCars > currentWindow.AvailableCars)
                 {
-                    int numberOfCars = previousWindow.AvailableCars - currentWindow.AvailableCars;
-                    for(int car = 1; car <= numberOfCars; car++)
+                    for(int car = 0; car < deltaCars; car++)
                     {
-                        int idleDurationMinutes = (int)(previousWindow.TimeSpan.Start - previousWindow.TimeSpan.End).ToMinutes();
+                        int idleDurationMinutes = (int)(currentWindow.TimeSpan.Start - lastTimeUsed[lastTimeUsed.Length - currentWindow.AvailableCars - 1 - car]).ToMinutes();
                         int startHour = (int)(currentWindow.TimeSpan.Start.Hours % 24);
-
                         StartCalculation(idleDurationMinutes, startHour, ref startResults);
                                                 
                         Time soakDurationStart = previousWindow.TimeSpan.Start;
