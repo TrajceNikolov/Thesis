@@ -26,17 +26,24 @@ namespace Trajce_Thesis
         [SubModelInformation(Required = true, Description = "Start File")]
         public FileLocation StartFile;
 
+        [RunParameter("Output Soak File", "Soak.txt", "The output file containing soak emissions")]
+        public string SoakOutputFile;
+
+        [RunParameter("Output Start File", "Start.txt", "The output file containing soak emissions")]
+        public string StartOutputFile;
+
+        float[] startResults = null;
+        float soakResults = 0;
+
         public void HouseholdComplete(ITashaHousehold household, bool success)
         {           
         }
 
         public void HouseholdIterationComplete(ITashaHousehold household, int hhldIteration, int totalHouseholdIterations)
-        {
-            float[] startResults = null;
-            float soakResults = 0;
+        {          
             var allocator = household["ResourceAllocator"] as HouseholdResourceAllocator;
-            CalculateIntraTripChainEmissions(household, ref startResults, ref soakResults);                             
-            CalculateInterTripChainEmissions(household, ref startResults, ref soakResults, allocator);
+            CalculateIntraTripChainEmissions(household, ref this.startResults, ref this.soakResults);                             
+            CalculateInterTripChainEmissions(household, ref this.startResults, ref this.soakResults, allocator);
         }
 
         private void CalculateInterTripChainEmissions(ITashaHousehold household, ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
@@ -88,7 +95,7 @@ namespace Trajce_Thesis
                 soakDuration1 = Math.Min(60, (int)(soakDurationStart - soakDurationEnd).ToMinutes());
                 soakDuration2 = 0;
 
-                soakResults += Factors.GetSoakFactor(soakDuration1, soakHour1);
+                soakResults += Factors.GetSoakFactor(soakDuration1, soakHour1)*soakDuration1;
             }
 
             else
@@ -97,7 +104,7 @@ namespace Trajce_Thesis
                 soakHour2 = soakHour1 + 1;
                 soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 60 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration
 
-                soakResults += (Factors.GetSoakFactor(soakDuration1, soakHour1) + Factors.GetSoakFactor(soakDuration2, soakHour2));
+                soakResults += (Factors.GetSoakFactor(soakDuration1, soakHour1)*soakDuration1 + Factors.GetSoakFactor(soakDuration2, soakHour2)*soakDuration2);
             }            
         }
 
@@ -193,7 +200,16 @@ namespace Trajce_Thesis
         }
 
         public void IterationFinished(int iteration, int totalIterations)
-        {         
+        {
+            using (StreamWriter writer = new StreamWriter(SoakOutputFile))
+            {
+                writer.WriteLine("Total HC Emissions: {0}", this.soakResults);
+            }
+
+            using (StreamWriter writer = new StreamWriter(StartOutputFile))
+            {
+                writer.WriteLine("HC = {0} \n, CO = {1}, \n, NOX = {2}", this.startResults[0], this.startResults[1], this.startResults[2]);
+            }
         }
 
         public void IterationStarting(int iteration, int totalIterations)
