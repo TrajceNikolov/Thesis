@@ -34,6 +34,7 @@ namespace Trajce_Thesis
 
         float[] startResults = null;
         float soakResults = 0;
+        int problems = 0;
 
         public void HouseholdComplete(ITashaHousehold household, bool success)
         {           
@@ -58,7 +59,17 @@ namespace Trajce_Thesis
             {
                 var previousWindow = availability[window - 1];
                 var currentWindow = availability[window];
-                int deltaCars = previousWindow.AvailableCars - currentWindow.AvailableCars;
+                if(currentWindow.AvailableCars < 0)
+                {
+                    continue;
+                }
+                if(previousWindow.AvailableCars < 0)
+                {
+                    previousWindow = availability[window - 2];
+                }
+            
+                int deltaCars = previousWindow.AvailableCars - currentWindow.AvailableCars;                
+
                 // if a car was returned
                 if(previousWindow.AvailableCars < currentWindow.AvailableCars)
                 {
@@ -72,9 +83,9 @@ namespace Trajce_Thesis
                 else if(previousWindow.AvailableCars > currentWindow.AvailableCars)
                 {
                     for(int car = 0; car < deltaCars; car++)
-                    {
-                        int idleDurationMinutes = (int)(currentWindow.TimeSpan.Start - lastTimeUsed[lastTimeUsed.Length - currentWindow.AvailableCars - 1 - car]).ToMinutes();
-                        int startHour = (int)(currentWindow.TimeSpan.Start.Hours % 24);
+                    {                                               
+                        int idleDurationMinutes = Math.Max(0, (int)(currentWindow.TimeSpan.Start - lastTimeUsed[lastTimeUsed.Length - currentWindow.AvailableCars - 1 - car]).ToMinutes());                                               
+                        int startHour = (int)(currentWindow.TimeSpan.Start.Hours % 24);                        
                         StartCalculation(idleDurationMinutes, startHour, ref startResults);
                                                 
                         Time soakDurationStart = previousWindow.TimeSpan.Start;
@@ -90,16 +101,22 @@ namespace Trajce_Thesis
         {
             int soakDuration1;
             int soakDuration2;
-            int soakHour1 = soakDurationStart.Hours % 24;
-            int soakHour2 = soakDurationEnd.Hours % 24;
+            int soakHour1 = soakDurationStart.Hours;
+            int soakHour2 = soakDurationEnd.Hours;
+
+            if((soakDurationEnd - soakDurationStart).ToMinutes() < 0)
+            {
+                problems++;
+                soakResults += 0;
+            }
 
             // Same hour for soak duration
-            if (soakHour1 == soakHour2)
+            else if (soakHour1 == soakHour2)
             {
                 soakDuration1 = Math.Min(60, (int)(soakDurationEnd - soakDurationStart).ToMinutes());
                 soakDuration2 = 0;
 
-                soakResults += Factors.GetSoakFactor(soakDuration1 - 1, soakHour1)*soakDuration1;
+                soakResults += Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1)*soakDuration1; // For the case where the soak is less than 1, we set it to 1 so that we can take the lowest possible duration of soak
             }
 
             else
@@ -108,8 +125,8 @@ namespace Trajce_Thesis
                 if (soakDuration1 < 60)
                 {
                     soakHour2 = soakHour1 + 1;
-                    soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 59 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration                    
-                    soakResults += (Factors.GetSoakFactor(soakDuration1 - 1, soakHour1) * soakDuration1 + Factors.GetSoakFactor(soakDuration2, soakHour2) * soakDuration2);
+                    soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 59 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration                                        
+                    soakResults += (Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1) * soakDuration1 + Factors.GetSoakFactor(Math.Max(1, soakDuration2) - 1, soakHour2) * soakDuration2);
                 }
                 else 
                 { 
@@ -176,10 +193,17 @@ namespace Trajce_Thesis
             {
                 var currentTrip = vehicleTrips[i];
                 int idleDurationMinutes = (int)((currentTrip.TripStartTime - previous_trip.ActivityStartTime).ToMinutes());                
-                int startHour = currentTrip.TripStartTime.Hours % 24;      
-     
-                StartCalculation(idleDurationMinutes, startHour, ref results);
+                int startHour = currentTrip.TripStartTime.Hours % 24;
 
+                if (idleDurationMinutes < 0)
+                {
+                    problems++;
+                }
+                else
+                {
+                    StartCalculation(idleDurationMinutes, startHour, ref results);
+                }
+               
                 previous_trip = currentTrip;
             }            
         }
@@ -235,6 +259,8 @@ namespace Trajce_Thesis
             {
                 writer.WriteLine("HC = {0} \n, CO = {1}, \n, NOX = {2}", this.startResults[0], this.startResults[1], this.startResults[2]);
             }
+
+            Console.WriteLine("Problems = {0}", problems);
         }
 
         public void IterationStarting(int iteration, int totalIterations)

@@ -88,12 +88,17 @@ namespace Trajce_Thesis
 
         public static float GetStartFactor(int pollutant, int duration, int hour)
         {
-            return StartFactors[pollutant, duration, hour];
+            int hourInFile = (hour % 24) - 4; // First get the hours down to the 24 available and then subtract 4 because we set 0 as 4am.
+            if (hourInFile < 0) { hourInFile += 24; } // for the 25-28 hours in the morning, we need to add a 24 as they are represented by 20-23 in the file
+            return StartFactors[pollutant, duration, hourInFile];
         }
 
         public static float GetSoakFactor(int duration, int hour)
         {
-            return SoakFactors[duration, hour];
+
+            int hourInFile = (hour % 24) - 4; // First get the hours down to the 24 available and then subtract 4 because we set 0 as 4am.
+            if (hourInFile < 0) { hourInFile += 24; } // for the 25-28 hours in the morning, we need to add a 24 as they are represented by 20-23 in the file
+            return SoakFactors[duration, hourInFile];
         }
     }
 }
