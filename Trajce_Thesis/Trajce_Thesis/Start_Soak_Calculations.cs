@@ -138,7 +138,7 @@ namespace Trajce_Thesis
                     if(person.TripChains[i].TripChainRequiresPV)
                     {
                         List<ITrip> vehicleTrips = new List<ITrip>();
-                        for(int j = 0; i < person.TripChains[i].Trips.Count; j++)
+                        for(int j = 0; j < person.TripChains[i].Trips.Count; j++)
                         {
                             if(!person.TripChains[i].Trips[j].Mode.NonPersonalVehicle)
                             {
