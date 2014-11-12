@@ -53,8 +53,8 @@ namespace Trajce_Thesis
                     float factor;
                     reader.Get(out pollutantType, 0);
                     reader.Get(out durationOfSoak, 1);
-                    // 25 because we have two columns before factors start.
-                    for(int hour = 2; hour <= columns - 1; hour++) 
+                    // 25 because we have two explanatory columns in the file before factors start.
+                    for(int hour = 2; hour < columns; hour++) 
                     {
                         reader.Get(out factor, hour);
                         StartFactors[pollutantType, durationOfSoak - 1, hour - 2] = factor;

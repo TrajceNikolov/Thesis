@@ -14,7 +14,7 @@ using Tasha.XTMFModeChoice;
 
 namespace Trajce_Thesis
 {
-    class Start_Soak_Calculations : IPostHouseholdIteration
+    public class Start_Soak_Calculations : IPostHouseholdIteration
     {
 
         [SubModelInformation(Required = true, Description = "Exhaust File")]
@@ -26,11 +26,11 @@ namespace Trajce_Thesis
         [SubModelInformation(Required = true, Description = "Start File")]
         public FileLocation StartFile;
 
-        [RunParameter("Output Soak File", "Soak.txt", "The output file containing soak emissions")]
-        public string SoakOutputFile;
+        [SubModelInformation(Required=true, Description= "The output file containing soak emissions")]
+        public FileLocation SoakOutputFile;
 
-        [RunParameter("Output Start File", "Start.txt", "The output file containing soak emissions")]
-        public string StartOutputFile;
+        [SubModelInformation(Required = true, Description = "The output file containing soak emissions")]
+        public FileLocation StartOutputFile;
 
         float[] startResults = null;
         float soakResults = 0;
@@ -42,18 +42,22 @@ namespace Trajce_Thesis
         public void HouseholdIterationComplete(ITashaHousehold household, int hhldIteration, int totalHouseholdIterations)
         {          
             var allocator = household["ResourceAllocator"] as HouseholdResourceAllocator;
-            CalculateIntraTripChainEmissions(household, ref this.startResults, ref this.soakResults);                             
-            CalculateInterTripChainEmissions(household, ref this.startResults, ref this.soakResults, allocator);
+            if (allocator.VehicleAvailability != null)
+            {
+                CalculateIntraTripChainEmissions(household, ref this.startResults, ref this.soakResults);
+                CalculateInterTripChainEmissions(household, ref this.startResults, ref this.soakResults, allocator);
+            }
         }
 
         private void CalculateInterTripChainEmissions(ITashaHousehold household, ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
         {
+            var availability = allocator.VehicleAvailability;
             var lastTimeUsed = household.Vehicles.Select( v => Time.StartOfDay ).ToArray();
             // var allocations = allocator.Resolution;       
-            for(int window = 1; window < allocator.VehicleAvailability.Count; window++)
+            for(int window = 1; window < availability.Count; window++)
             {
-                var previousWindow = allocator.VehicleAvailability[window - 1];
-                var currentWindow = allocator.VehicleAvailability[window];
+                var previousWindow = availability[window - 1];
+                var currentWindow = availability[window];
                 int deltaCars = previousWindow.AvailableCars - currentWindow.AvailableCars;
                 // if a car was returned
                 if(previousWindow.AvailableCars < currentWindow.AvailableCars)
@@ -92,19 +96,27 @@ namespace Trajce_Thesis
             // Same hour for soak duration
             if (soakHour1 == soakHour2)
             {
-                soakDuration1 = Math.Min(60, (int)(soakDurationStart - soakDurationEnd).ToMinutes());
+                soakDuration1 = Math.Min(60, (int)(soakDurationEnd - soakDurationStart).ToMinutes());
                 soakDuration2 = 0;
 
-                soakResults += Factors.GetSoakFactor(soakDuration1, soakHour1)*soakDuration1;
+                soakResults += Factors.GetSoakFactor(soakDuration1 - 1, soakHour1)*soakDuration1;
             }
 
             else
             {
-                soakDuration1 = (int)((new Time { Hours = soakHour1 + 1, Minutes = 0, Seconds = 0 }) - soakDurationStart).ToMinutes(); // rest of first hour
-                soakHour2 = soakHour1 + 1;
-                soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 60 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration
+                soakDuration1 = (int)Math.Min(60, ((new Time { Hours = soakHour1 + 1, Minutes = 0, Seconds = 0 }) - soakDurationStart).ToMinutes()); // rest of first hour
+                if (soakDuration1 < 60)
+                {
+                    soakHour2 = soakHour1 + 1;
+                    soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 59 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration                    
+                    soakResults += (Factors.GetSoakFactor(soakDuration1 - 1, soakHour1) * soakDuration1 + Factors.GetSoakFactor(soakDuration2, soakHour2) * soakDuration2);
+                }
+                else 
+                { 
+                    soakDuration2 = 0;
+                    soakResults += Factors.GetSoakFactor(soakDuration1 - 1, soakHour1) * soakDuration1;
+                }                
 
-                soakResults += (Factors.GetSoakFactor(soakDuration1, soakHour1)*soakDuration1 + Factors.GetSoakFactor(soakDuration2, soakHour2)*soakDuration2);
             }            
         }
 
@@ -122,18 +134,31 @@ namespace Trajce_Thesis
             foreach(var person in household.Persons)
             {
                 for(int i = 0; i < person.TripChains.Count; i++)
-                {
+                {                    
                     if(person.TripChains[i].TripChainRequiresPV)
-                    {                       
-                        StartCalculationIntraTripChain(
-                            person.TripChains.Where(tc => tc.TripChainRequiresPV)
-                            .SelectMany(tc => tc.Trips.Where(t => !t.Mode.NonPersonalVehicle)).OrderBy(t => t.ActivityStartTime).ToList(),
-                            ref startResults);
+                    {
+                        List<ITrip> vehicleTrips = new List<ITrip>();
+                        for(int j = 0; i < person.TripChains[i].Trips.Count; j++)
+                        {
+                            if(!person.TripChains[i].Trips[j].Mode.NonPersonalVehicle)
+                            {
+                                vehicleTrips.Add(person.TripChains[i].Trips[j]);
+                            }
+                        }
+                        vehicleTrips.OrderBy(t => t.ActivityStartTime);
+                        StartCalculationIntraTripChain(vehicleTrips, ref startResults);
+                        SoakCalculationIntraTripChain(vehicleTrips, ref soakResults);
 
-                        SoakCalculationIntraTripChain(
-                            person.TripChains.Where(tc => tc.TripChainRequiresPV)
-                            .SelectMany(tc => tc.Trips.Where(t => !t.Mode.NonPersonalVehicle)).OrderBy(t => t.ActivityStartTime).ToList(),
-                            ref soakResults);
+                        //StartCalculationIntraTripChain(
+                        //    person.TripChains[i].Trips.SelectMany(t => t.Mode!t.Mode.NonPersonalVehicle)
+                        //    person.TripChains.Where(tc => tc.TripChainRequiresPV)
+                        //    .SelectMany(tc => tc.Trips.Where(t => !t.Mode.NonPersonalVehicle)).OrderBy(t => t.ActivityStartTime).ToList(),
+                        //    ref startResults);
+
+                        //SoakCalculationIntraTripChain(
+                        //    person.TripChains.Where(tc => tc.TripChainRequiresPV)
+                        //    .SelectMany(tc => tc.Trips.Where(t => !t.Mode.NonPersonalVehicle)).OrderBy(t => t.ActivityStartTime).ToList(),
+                        //    ref soakResults);
                     }
                 }
             }
