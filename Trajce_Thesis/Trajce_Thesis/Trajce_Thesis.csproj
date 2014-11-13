@@ -51,6 +51,10 @@
     <Reference Include="TashaInterfaces">
       <HintPath>..\..\..\..\XTMF\Modules\TashaInterfaces.dll</HintPath>
     </Reference>
+    <Reference Include="TMG.Emme, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\XTMF\Modules\TMG.Emme.dll</HintPath>
+    </Reference>
     <Reference Include="TMGInterfaces">
       <HintPath>..\..\..\..\XTMF\Modules\TMGInterfaces.dll</HintPath>
     </Reference>
@@ -59,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EmmeTool.cs" />
     <Compile Include="Factors.cs" />
     <Compile Include="Start_Soak_Calculations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
