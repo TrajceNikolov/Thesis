@@ -35,6 +35,7 @@ namespace Trajce_Thesis
         float[] startResults = null;
         float soakResults = 0;
         int problems = 0;
+        int houseProblems = 0;
 
         public void HouseholdComplete(ITashaHousehold household, bool success)
         {           
@@ -50,6 +51,67 @@ namespace Trajce_Thesis
             }
         }
 
+        private void CalculateInterTripChainEmissions(ITashaHousehold household, ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
+        {
+            List<TashaTimeSpan> autoTripChains = GenerateCarUsageInOrder(household, allocator);
+            var lastTimeUsed = household.Vehicles.Select(v => Time.StartOfDay).ToArray();
+            // var allocations = allocator.Resolution;
+            List<Time> endTimes = new List<Time>();
+            int carsAvailable = lastTimeUsed.Length;
+            for (int i = 0; i < autoTripChains.Count; )
+            {
+                if (endTimes.Count > 0 && endTimes[0] < autoTripChains[i].Start && carsAvailable < lastTimeUsed.Length)
+                {
+                    lastTimeUsed[carsAvailable] = endTimes[0];
+                    carsAvailable++;                    
+                    continue;
+                }
+                else
+                {
+                    try
+                    {
+                        int idleDurationMinutes = Math.Max(0, (int)(autoTripChains[i].Start - lastTimeUsed[lastTimeUsed.Length - carsAvailable]).ToMinutes());
+                        int startHour = (int)(autoTripChains[i].Start.Hours % 24);
+                        StartCalculation(idleDurationMinutes, startHour, ref startResults);
+
+                        Time soakDurationStart = lastTimeUsed[lastTimeUsed.Length - carsAvailable];
+                        Time soakDurationEnd = autoTripChains[i].Start;
+
+                        SoakCalculations(soakDurationStart, soakDurationEnd, ref soakResults);
+
+
+                        endTimes.Add(autoTripChains[i].End);
+                        endTimes.Sort(); //(f, s) => f.CompareTo(s)
+                        i++;
+                        carsAvailable--;
+                    }
+                    catch
+                    {
+                        houseProblems++;
+                    }
+                }
+            }
+        }
+
+        private static List<TashaTimeSpan> GenerateCarUsageInOrder(ITashaHousehold household, HouseholdResourceAllocator allocator)
+        {
+            var autoTripChains = new List<TashaTimeSpan>();
+            var resolution = allocator.Resolution;
+            for (int i = 0; i < resolution.Length; i++)
+            {
+                for (int j = 0; j < resolution[i].Length; j++)
+                {
+                    if (resolution[i][j] > 0)
+                    {
+                        var tc = household.Persons[i].TripChains[j];
+                        autoTripChains.Add(new TashaTimeSpan(tc.StartTime, tc.EndTime));
+                    }
+                }
+            }
+            autoTripChains.Sort((f, s) => f.Start.CompareTo(s.Start));
+            return autoTripChains;
+        }
+        /*
         private void CalculateInterTripChainEmissions(ITashaHousehold household, ref float[] startResults, ref float soakResults, HouseholdResourceAllocator allocator)
         {
             var availability = allocator.VehicleAvailability;
@@ -96,6 +158,7 @@ namespace Trajce_Thesis
                 }
             }
         }
+         * */
         
         private void SoakCalculations(Time soakDurationStart, Time soakDurationEnd, ref float soakResults)
         {
@@ -116,7 +179,7 @@ namespace Trajce_Thesis
                 soakDuration1 = Math.Min(60, (int)(soakDurationEnd - soakDurationStart).ToMinutes());
                 soakDuration2 = 0;
 
-                soakResults += Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1)*soakDuration1; // For the case where the soak is less than 1, we set it to 1 so that we can take the lowest possible duration of soak
+                soakResults += Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1) * (soakDuration1 / 60); // For the case where the soak is less than 1, we set it to 1 so that we can take the lowest possible duration of soak
             }
 
             else
@@ -126,12 +189,12 @@ namespace Trajce_Thesis
                 {
                     soakHour2 = soakHour1 + 1;
                     soakDuration2 = Math.Min((int)(soakDurationEnd - new Time { Hours = soakHour2 }).ToMinutes(), 59 - soakDuration1); // the second duration represents whatever is left over in the second hour, or just 60 - first duration                                        
-                    soakResults += (Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1) * soakDuration1 + Factors.GetSoakFactor(Math.Max(1, soakDuration2) - 1, soakHour2) * soakDuration2);
+                    soakResults += (Factors.GetSoakFactor(Math.Max(1, soakDuration1) - 1, soakHour1) * (soakDuration1 / 60) + Factors.GetSoakFactor(Math.Max(1, soakDuration2) - 1, soakHour2) * (soakDuration2 / 60));
                 }
                 else 
                 { 
                     soakDuration2 = 0;
-                    soakResults += Factors.GetSoakFactor(soakDuration1 - 1, soakHour1) * soakDuration1;
+                    soakResults += Factors.GetSoakFactor(soakDuration1 - 1, soakHour1) * (soakDuration1 / 60);
                 }                
 
             }            
@@ -261,6 +324,7 @@ namespace Trajce_Thesis
             }
 
             Console.WriteLine("Problems = {0}", problems);
+            Console.WriteLine("house problems = {0}", houseProblems);
         }
 
         public void IterationStarting(int iteration, int totalIterations)
