@@ -63,7 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EmmeTool.cs" />
+    <Compile Include="Exhaust_Emission_Calculations.cs" />
     <Compile Include="Factors.cs" />
     <Compile Include="Start_Soak_Calculations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

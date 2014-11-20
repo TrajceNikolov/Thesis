@@ -15,10 +15,7 @@ using Tasha.XTMFModeChoice;
 namespace Trajce_Thesis
 {
     public class Start_Soak_Calculations : IPostHouseholdIteration
-    {
-
-        [SubModelInformation(Required = true, Description = "Exhaust File")]
-        public FileLocation ExhaustFile;
+    {        
 
         [SubModelInformation(Required = true, Description = "Soak File")]
         public FileLocation SoakFile;
@@ -60,9 +57,10 @@ namespace Trajce_Thesis
             int carsAvailable = lastTimeUsed.Length;
             for (int i = 0; i < autoTripChains.Count; )
             {
-                if (endTimes.Count > 0 && endTimes[0] < autoTripChains[i].Start && carsAvailable < lastTimeUsed.Length)
+                if (endTimes.Count > 0 && endTimes[0] < autoTripChains[i].Start)
                 {
                     lastTimeUsed[carsAvailable] = endTimes[0];
+                    endTimes.RemoveAt(0);
                     carsAvailable++;                    
                     continue;
                 }
@@ -88,6 +86,8 @@ namespace Trajce_Thesis
                     catch
                     {
                         houseProblems++;
+                        i++;
+                        continue;
                     }
                 }
             }
@@ -315,12 +315,12 @@ namespace Trajce_Thesis
         {
             using (StreamWriter writer = new StreamWriter(SoakOutputFile))
             {
-                writer.WriteLine("Total HC Emissions: {0}", this.soakResults);
+                writer.WriteLine("HC: {0}", this.soakResults);
             }
 
             using (StreamWriter writer = new StreamWriter(StartOutputFile))
             {
-                writer.WriteLine("HC = {0} \n, CO = {1}, \n, NOX = {2}", this.startResults[0], this.startResults[1], this.startResults[2]);
+                writer.WriteLine("HC = {0} \n CO = {1} \n, NOX = {2}", this.startResults[0], this.startResults[1], this.startResults[2]);
             }
 
             Console.WriteLine("Problems = {0}", problems);
@@ -329,7 +329,7 @@ namespace Trajce_Thesis
 
         public void IterationStarting(int iteration, int totalIterations)
         {
-            Factors.CalculateFactors(ExhaustFile, StartFile, SoakFile);
+            Factors.CalculateStartSoakFactors(StartFile, SoakFile);
         }
 
         public string Name

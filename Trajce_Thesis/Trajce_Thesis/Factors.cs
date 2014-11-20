@@ -16,32 +16,8 @@ namespace Trajce_Thesis
         private static float[, , ,] ExhaustFactors = new float[4, 4, 15, 24];
         private static float[, ,] StartFactors = new float[3, 69, 24]; //69 = number of different durations for the start emissions.
         private static float[,] SoakFactors = new float[60, 24]; //60 = number of soaktime durations
-        public static void CalculateFactors(string exhaustFile, string startFile, string soakFile)
+        public static void CalculateStartSoakFactors(string startFile, string soakFile)
         {            
-
-            using (var reader = new CsvReader(exhaustFile))
-            {
-                reader.LoadLine();
-                int columns;
-                while (reader.LoadLine(out columns))
-                {
-                    int roadType;
-                    int polutionType;
-                    int speed;
-                    float factor;
-                    reader.Get(out roadType, 0);
-                    reader.Get(out polutionType, 1);
-                    reader.Get(out speed, 2);
-
-                    // 26 because we have 3 columns (in file) before factors start
-                    for(int hour = 3; hour <= 26; hour++) 
-                    {
-                        reader.Get(out factor, hour);
-                        ExhaustFactors[roadType, polutionType, speed, hour - 3] = factor;
-                    }
-                }
-            }
-
             using (var reader = new CsvReader(startFile))
             {
                 reader.LoadLine();
@@ -81,9 +57,37 @@ namespace Trajce_Thesis
             }            
         }
 
+        public static void CalculateExhaustFactors(string exhaustFile)
+        {
+            using (var reader = new CsvReader(exhaustFile))
+            {
+                reader.LoadLine();
+                int columns;
+                while (reader.LoadLine(out columns))
+                {
+                    int roadType;
+                    int polutionType;
+                    int speed;
+                    float factor;
+                    reader.Get(out roadType, 0);
+                    reader.Get(out polutionType, 1);
+                    reader.Get(out speed, 2);
+
+                    // 26 because we have 3 columns (in file) before factors start
+                    for (int hour = 3; hour <= 26; hour++)
+                    {
+                        reader.Get(out factor, hour);
+                        ExhaustFactors[roadType, polutionType, speed, hour - 3] = factor;
+                    }
+                }
+            }
+        }
+
         public static float GetExhaustFactor(int roadType, int pollutant, int speed, int hour)
         {
-            return ExhaustFactors[roadType, pollutant, speed, hour];                        
+            int hourInFile = (hour % 24) - 4; // First get the hours down to the 24 available and then subtract 4 because we set 0 as 4am.
+            if (hourInFile < 0) { hourInFile += 24; } // for the 25-28 hours in the morning, we need to add a 24 as they are represented by 20-23 in the file
+            return ExhaustFactors[roadType, pollutant, speed, hourInFile];                        
         }
 
         public static float GetStartFactor(int pollutant, int duration, int hour)
